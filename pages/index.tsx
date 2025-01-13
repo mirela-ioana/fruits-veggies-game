@@ -3,6 +3,28 @@ import styled from 'styled-components'
 import { motion } from 'framer-motion'
 import GameLogic from '../components/GameLogic'
 
+// Types
+interface PopupProps {
+  show: boolean;
+}
+
+interface StyledComponentProps {
+  show?: boolean;
+}
+
+// Styled Components
+const StyledPopup = styled.div<PopupProps>`
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  display: ${props => props.show ? 'block' : 'none'};
+`
+
 const GameContainer = styled.div`
   width: 100vw;
   height: 100vh;
@@ -40,6 +62,7 @@ const Basket = styled(motion.div)`
   bottom: 20px;
   border-radius: 0 0 50px 50px;
   cursor: pointer;
+  
   &::before {
     content: '🧺';
     position: absolute;
@@ -49,7 +72,7 @@ const Basket = styled(motion.div)`
   }
 `
 
-const Tutorial = styled.div`
+const StyledOverlay = styled.div<StyledComponentProps>`
   position: absolute;
   top: 50%;
   left: 50%;
@@ -61,21 +84,15 @@ const Tutorial = styled.div`
   display: ${props => props.show ? 'block' : 'none'};
 `
 
-const NameInput = styled.div`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(255, 255, 255, 0.9);
-  padding: 20px;
-  border-radius: 10px;
-  text-align: center;
-  display: ${props => props.show ? 'block' : 'none'};
+const Tutorial = styled(StyledOverlay)``
+
+const NameInput = styled(StyledOverlay)`
   input {
     margin: 10px;
     padding: 5px;
     font-size: 16px;
   }
+  
   button {
     margin: 10px;
     padding: 5px 15px;
@@ -85,70 +102,113 @@ const NameInput = styled.div`
     border: none;
     border-radius: 5px;
     cursor: pointer;
+    
     &:hover {
       background: #45a049;
     }
   }
 `
 
-const HomePage = () => {
-  const [score, setScore] = useState(0)
-  const [position, setPosition] = useState(0)
-  const [showTutorial, setShowTutorial] = useState(true)
-  const [playerName, setPlayerName] = useState('')
-  const [gameStarted, setGameStarted] = useState(false)
+// Component
+interface GameState {
+  score: number;
+  position: number;
+  showTutorial: boolean;
+  playerName: string;
+  gameStarted: boolean;
+}
+
+const HomePage: React.FC = () => {
+  const [gameState, setGameState] = useState<GameState>({
+    score: 0,
+    position: 0,
+    showTutorial: true,
+    playerName: '',
+    gameStarted: false
+  })
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    const newPosition = e.clientX - 50 // Center the basket under the cursor
-    setPosition(Math.min(Math.max(0, newPosition), window.innerWidth - 100))
+    const newPosition = Math.min(
+      Math.max(0, e.clientX - 50),
+      window.innerWidth - 100
+    )
+    setGameState(prev => ({ ...prev, position: newPosition }))
   }
 
   const startGame = () => {
-    if (playerName.trim()) {
-      setGameStarted(true)
-      setShowTutorial(false)
+    if (gameState.playerName.trim()) {
+      setGameState(prev => ({
+        ...prev,
+        gameStarted: true,
+        showTutorial: false
+      }))
     }
   }
 
+  // Replace the updateScore function with this:
+  const updateScore: React.Dispatch<React.SetStateAction<number>> = (value) => {
+    setGameState(prev => ({
+      ...prev,
+      score: typeof value === 'function' 
+        ? value(prev.score)
+        : value
+    }))
+  }
+
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setGameState(prev => ({ ...prev, playerName: e.target.value }))
+  }
+
+  const closeTutorial = () => {
+    setGameState(prev => ({ ...prev, showTutorial: false }))
+  }
+
   return (
-    <GameContainer onMouseMove={handleMouseMove}>
-      <Header>
-        <h1>Fruit and Veggie Catcher</h1>
-        {gameStarted && <h2>Go {playerName}! 🌟</h2>}
-      </Header>
-      
-      <Score>Score: {score}</Score>
-      
-      <NameInput show={!gameStarted}>
-        <h2>Welcome to the Fruit and Veggie Game! 🍎</h2>
-        <p>What's your name?</p>
-        <input
-          type="text"
-          value={playerName}
-          onChange={(e) => setPlayerName(e.target.value)}
-          placeholder="Enter your name"
-        />
-        <button onClick={startGame}>Start Playing!</button>
-      </NameInput>
-
-      <Tutorial show={showTutorial && gameStarted}>
-        <h2>How to Play</h2>
-        <p>1. Move your mouse to control the basket 🧺</p>
-        <p>2. Catch healthy fruits and vegetables 🍎🥕</p>
-        <p>3. Learn their names as you catch them! 📚</p>
-        <button onClick={() => setShowTutorial(false)}>Got it!</button>
-      </Tutorial>
-
-      {gameStarted && (
-        <>
-          <GameLogic score={score} setScore={setScore} basketPosition={position} />
-          <Basket 
-            animate={{ x: position }}
-            transition={{ type: "spring", stiffness: 300 }}
+    <StyledPopup show={true}>
+      <GameContainer onMouseMove={handleMouseMove}>
+        <Header>
+          <h1>Fruit and Veggie Catcher</h1>
+          {gameState.gameStarted && <h2>Go {gameState.playerName}! 🌟</h2>}
+        </Header>
+        
+        <Score>Score: {gameState.score}</Score>
+        
+        <NameInput show={!gameState.gameStarted}>
+          <h2>Welcome to the Fruit and Veggie Game! 🍎</h2>
+          <p>What's your name?</p>
+          <input
+            type="text"
+            value={gameState.playerName}
+            onChange={handleNameChange}
+            placeholder="Enter your name"
           />
-        </>
-      )}
-    </GameContainer>
+          <button onClick={startGame}>Start Playing!</button>
+        </NameInput>
+
+        <Tutorial show={gameState.showTutorial && gameState.gameStarted}>
+          <h2>How to Play</h2>
+          <p>1. Move your mouse to control the basket 🧺</p>
+          <p>2. Catch healthy fruits and vegetables 🍎🥕</p>
+          <p>3. Learn their names as you catch them! 📚</p>
+          <button onClick={closeTutorial}>Got it!</button>
+        </Tutorial>
+
+        {gameState.gameStarted && (
+          <>
+            <GameLogic 
+              score={gameState.score} 
+              setScore={updateScore} 
+              basketPosition={gameState.position} 
+            />
+            <Basket 
+              animate={{ x: gameState.position }}
+              transition={{ type: "spring", stiffness: 300 }}
+            />
+          </>
+        )}
+      </GameContainer>
+    </StyledPopup>
   )
 }
 

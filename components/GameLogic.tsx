@@ -3,7 +3,7 @@ import FallingItem from './FallingItem'
 
 interface GameLogicProps {
   score: number;
-  setScore: (score: number) => void;
+  setScore: React.Dispatch<React.SetStateAction<number>>; // Fix the type here
   basketPosition: number;
 }
 
@@ -48,7 +48,7 @@ const GameLogic = ({ score, setScore, basketPosition }: GameLogicProps) => {
       setTimeout(() => message.remove(), 2000)
       
       // Update score and remove item
-      setScore(prev => prev + 1)
+      setScore((prev: number) => Math.floor(prev + 1))
       setItems(prev => prev.filter(item => item.id !== id))
       
       // Increase game speed as score increases
